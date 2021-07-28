@@ -1,11 +1,15 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <random>
+#include <functional>
 #include <pthread.h>
 #include <unistd.h>
 #include "datalab_store.h"
 #include "benchmarks.h"
 #include "my_kvs.h"
+
+using namespace std;
 
 #define SUCCESS 0
 #define FAILED 1
@@ -13,10 +17,13 @@
 #define READ_OP   2
 #define DELETE_OP 3
 
+bool verify;
+
 void usage (char *program)
 {
 	printf("==============\n");
-	printf("usage: %s [-n num_ios] [-o op_type] [-k klen] [-v vlen] [-t threads]\n", program);
+	printf("usage: %s [-c] [-n num_ios] [-o op_type] [-k klen] [-v vlen] [-t threads]\n", program);
+	printf("-c      check        :  check if insertions were done correctly\n");
 	printf("-n      num_ios      :  total number of ios (ignore this for iterator)\n");
 	printf("-o      op_type      :  1: write; 2: read; 3: delete\n");
 	printf("-k      klen         :  key length\n");
@@ -27,12 +34,8 @@ void usage (char *program)
 
 int perform_read (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, uint32_t vlen) {
 	int ret;
-	char *key   = (char*)malloc(4096);
-	char *value = (char*)malloc(4096);
-	if(key == NULL || value == NULL) {
-		fprintf(stderr, "failed to allocate\n");
-		return FAILED;
-	}
+	char key[4096];
+	char value[4096];
 
 	int start_key = id * count;
 	for (int i = start_key; i < start_key + count; i++) {
@@ -51,60 +54,67 @@ int perform_read (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, uint
 		}
 	}
 
-	if(key) free(key);
-	if(value) free(value);
-
 	return SUCCESS;
 }
 
 
 int perform_insertion (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, uint32_t vlen) {
 	int ret;
-	char *key   = (char*)malloc(4096);
-	char *value = (char*)malloc(4096);
-	if(key == NULL || value == NULL) {
-		fprintf(stderr, "failed to allocate\n");
-		return FAILED;
-	}
+	char key[4096];
+	char value[4096];
 
 	int start_key = id * count;
 
-	for(int i = start_key; i < start_key + count; i++) {
+	mt19937 engine(0); // Seed
+	uniform_int_distribution<int> distribution('0', 'z');
+	auto generator = bind(distribution, engine);
 
+	for(int i = start_key; i < start_key + count; i++) {
 		sprintf(key, "%0*d", klen - 1, i);
 		//sprintf(value, "%0*d", klen - 1, i + 10);
+
+		for (uint32_t j = 0; j < vlen - 1; j++)
+			value[j] = generator();
+		value[vlen - 1] = '\0';
 
 		struct kvs_key  kvskey = {key, klen};
 		struct kvs_value kvsvalue = {value, vlen};
 
+		printf("<INSERTION> key:\"%s\", value:\"%s\"\n", key, value);
+
 		ret = my_kvs->set(my_kvs, &kvskey, &kvsvalue, NULL);
 		if (ret != KVS_SUCCESS) {
 			fprintf(stderr, "set tuple failed with error 0x%x\n", ret);
-			free(key);
-			free(value);
 			return FAILED;
 		} else {
 			//fprintf(stdout, "thread %d store key %s with value %s done \n", id, key, value);
+		}
+
+		if (verify) {
+			char test[4096];
+			struct kvs_value testvalue = {test, vlen};
+			ret = my_kvs->get(my_kvs, &kvskey, &testvalue, NULL);
+			if(ret != KVS_SUCCESS) {
+				fprintf(stderr, "get tuple %s failed with error 0x%x\n", key, ret);
+				//exit(1);
+			} else {
+				//fprintf(stdout, "retrieve tuple %s with value = %s, vlen = %d, actual vlen = %d \n", key, value, kvsvalue.length, kvsvalue.actual_value_size);
+			}
+			if (strcmp(value, test)) {
+				fprintf(stderr, "<ERROR> Expected: \"%s\", but KVS returned: \"%s\"\n", value, test);
+			}
 		}
 
 		if(i % 100 == 0)
 			fprintf(stdout, "%d\r", i);
 	}
 
-	if(key) free(key);
-	if(value) free(value);
-
 	return SUCCESS;
 }
 
 int perform_delete (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, uint32_t vlen) {
 	int ret;
-	char *key  = (char*)malloc(4096);
-
-	if (key == NULL) {
-		fprintf(stderr, "failed to allocate\n");
-		return FAILED;
-	}
+	char key[4096];
 
 	int start_key = id * count;  
 	for (int i = start_key; i < start_key + count; i++) {
@@ -114,14 +124,12 @@ int perform_delete (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, ui
 		ret = my_kvs->del(my_kvs, &kvskey, NULL);
 		if(ret != KVS_SUCCESS) {
 			fprintf(stderr, "del tuple failed with error 0x%x\n", ret);
-			free(key);
 			return FAILED;
 		} else {
 			//fprintf(stderr, "del key %s done \n", key);
 		}
 	}
 
-	if(key) free(key);
 	return SUCCESS;
 }
 
@@ -166,8 +174,11 @@ int main (int argc, char *argv[]) {
 	uint32_t vlen = 4096;
 	int ret, c, t = 1;
 
-	while ((c = getopt(argc, argv, "n:o:k:v:t:h")) != -1) {
+	while ((c = getopt(argc, argv, "cn:o:k:v:t:h")) != -1) {
 		switch(c) {
+			case 'c':
+				verify = true;
+				break;
 			case 'n':
 				num_ios = atoi(optarg);
 				break;
