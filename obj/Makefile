@@ -19,6 +19,7 @@ CFLAGS	= $(INCDIR) \
 		  -fPIC \
 		  -march=native \
 		  -fsanitize=address \
+		  -static-libasan \
 #		  -DLIST \
 #		  -DTREE \
 #		  -DHASH \
