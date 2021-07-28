@@ -39,7 +39,7 @@ LIBS	=	-lpthread \
 
 TARGET	= my_kvs
 
-SRCS	= $(foreach dir, .. $(SRCDIR) $(KVSDIR), $(wildcard $(dir)/*.c))
+SRCS	= $(foreach dir, .. $(SRCDIR) $(KVSDIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 SRCS	:= $(notdir $(SRCS))
 
 OBJS	= $(SRCS:.c=.o)

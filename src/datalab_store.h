@@ -1,9 +1,9 @@
 #ifndef __CHEEZE_STORE_H__
 #define __CHEEZE_STORE_H__
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdbool>
+#include <cstdlib>
 
 #define kvs_key_t uint32_t
 #define kvs_value_t uint32_t
