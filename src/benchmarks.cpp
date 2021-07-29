@@ -13,7 +13,7 @@ using namespace std;
 
 #define SUCCESS 0
 #define FAILED 1
-#define WRITE_OP  1
+#define INSERT_OP  1
 #define READ_OP   2
 #define DELETE_OP 3
 
@@ -137,7 +137,7 @@ int perform_delete (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, ui
 void do_io (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen, uint32_t vlen, int op_type) {
 
 	switch(op_type) {
-		case WRITE_OP:
+		case INSERT_OP:
 			perform_insertion(id, my_kvs, count, klen, vlen);
 			break;
 		case READ_OP:
@@ -219,7 +219,7 @@ int main (int argc, char *argv[]) {
 	thread_args args[t];
 	pthread_t tid[t];
 
-	if (op_type != WRITE_OP) { // if op_type == READ or DELETE, preloading occurs.
+	if (op_type != INSERT_OP) { // if op_type == READ or DELETE, preloading occurs.
 		printf("[Preloading] 채우자 채워~\n");
 		for(int i = 0; i < t; i++){
 			args[i].id = i;
@@ -227,7 +227,7 @@ int main (int argc, char *argv[]) {
 			args[i].vlen = vlen;
 			args[i].count = num_ios;
 			args[i].wrapper = wrapper;
-			args[i].op_type = WRITE_OP;
+			args[i].op_type = INSERT_OP;
 			pthread_attr_t *attr = (pthread_attr_t *)malloc(sizeof(pthread_attr_t));
 			cpu_set_t cpus;
 			pthread_attr_init(attr);
