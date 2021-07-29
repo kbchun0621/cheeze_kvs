@@ -3,3 +3,4 @@
 /my_kvs*
 gmon.out
 uftrace.data*
+/obj/depend
