@@ -80,7 +80,8 @@ int perform_insertion (int id, struct my_kvs *my_kvs, int count, kvs_key_t klen,
 		struct kvs_key  kvskey = {key, klen};
 		struct kvs_value kvsvalue = {value, vlen};
 
-		printf("<INSERTION> key:\"%s\", value:\"%s\"\n", key, value);
+		if (verify)
+			printf("<INSERTION> key:\"%s\", value:\"%s\"\n", key, value);
 
 		ret = my_kvs->set(my_kvs, &kvskey, &kvsvalue, NULL);
 		if (ret != KVS_SUCCESS) {
