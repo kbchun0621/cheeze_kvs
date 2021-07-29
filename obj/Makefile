@@ -9,47 +9,38 @@ KVSDIR			= ../src/kvs
 
 VPATH	= $(SRCDIR) $(KVSDIR)
 
-CFLAGS	= $(INCDIR) \
+COMMON_CFLAGS	= $(INCDIR) \
 		  -Wall \
-		  -O2 \
-		  -g \
-		  -std=c++11 \
-		  -MMD \
-		  -MP \
-		  -fPIC \
-		  -march=native \
-		  -fsanitize=address \
-		  -static-libasan \
-#		  -DLIST \
-#		  -DTREE \
-#		  -DHASH \
+		  -O0 \
+		  -g -pg \
+		  -std=c++11
 
-CXX_FLAGS = \
-			-O2 \
-			-g \
-			-std=c++11 \
-			-MMD \
-			-MP \
-			-Wall \
-			-fPIC \
-			-march=native \
-			
+CFLAGS		= $(COMMON_CFLAGS) \
+		  -fsanitize=address \
+		  -static-libasan
+
+TRACE_CFLAGS	= $(COMMON_CFLAGS)
 
 LIBS	=	-lpthread \
 
 
 TARGET	= my_kvs
+TRACE_TARGET	= my_kvs-trace
 
 SRCS	= $(foreach dir, .. $(SRCDIR) $(KVSDIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 SRCS	:= $(notdir $(SRCS))
 
 OBJS	= $(SRCS:.c=.o)
 
-all: $(TARGET)
+all: $(TARGET) $(TRACE_TARGET)
 
-$(TARGET): $(OBJS)
-	$(LD) $^ -o $(TARGET) $(CFLAGS) $(LIBS)
+$(TARGET): $(SRCS)
+	$(CC) $^ -o $(TARGET) $(CFLAGS) $(LIBS)
 	mv $(TARGET) ../
+
+$(TRACE_TARGET): $(SRCS)
+	$(CC) $^ -o $(TRACE_TARGET) $(TRACE_CFLAGS) $(LIBS)
+	mv $(TRACE_TARGET) ../
 
 %o: %c
 	$(CC) $(CFLAGS) -c $< -o $@
